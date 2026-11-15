@@ -1,0 +1,55 @@
+name: Raspberry Pi arm64
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-raspberry-pi-arm64-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  raspberry-pi-arm64:
+    name: Linux Raspberry Pi 64-bit (arm64)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      # Debian bookworm is the base of Raspberry Pi OS bookworm, so the driver
+      # runs with the Pi's own libraries.
+      - name: Build, test and install
+        run: |
+          docker run --rm \
+            --platform linux/arm64 \
+            --volume "$GITHUB_WORKSPACE:/src" \
+            --workdir /src \
+            debian:bookworm \
+            bash -euc '
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                build-essential cmake git python3 pandoc ca-certificates
+              cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+              cmake --build build --parallel "$(nproc)"
+              ctest --test-dir build --output-on-failure
+              DESTDIR=/src/staging cmake --install build
+              tar -C /src/staging -czf /src/vscpl1drv-template-linux-arm64.tar.gz .
+            '
+
+      - name: Write SHA256SUMS
+        id: sha256sums
+        continue-on-error: true
+        shell: bash
+        run: |
+          bash "${GITHUB_WORKSPACE//\\//}/.github/scripts/write-sha256sums.sh" "SHA256SUMS-vscpl1drv-template-linux-arm64" <<'SHA256SUMS_PATTERNS'
+          vscpl1drv-template-linux-arm64.tar.gz
+          SHA256SUMS_PATTERNS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vscpl1drv-template-linux-arm64
+          path: |
+            vscpl1drv-template-linux-arm64.tar.gz
+            ${{ steps.sha256sums.outputs.file }}
+          if-no-files-found: error

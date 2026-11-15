@@ -1,0 +1,56 @@
+name: macOS
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: macOS ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-latest
+          - arch: x86_64
+            runner: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }}
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Install
+        run: |
+          cmake --install build --prefix "${{ github.workspace }}/staging"
+          tar -C "${{ github.workspace }}/staging" -czf "${{ github.workspace }}/vscpl1drv-template-macos-${{ matrix.arch }}.tar.gz" .
+
+      - name: Write SHA256SUMS
+        id: sha256sums
+        continue-on-error: true
+        shell: bash
+        run: |
+          bash "${GITHUB_WORKSPACE//\\//}/.github/scripts/write-sha256sums.sh" "SHA256SUMS-vscpl1drv-template-macos-${{ matrix.arch }}" <<'SHA256SUMS_PATTERNS'
+          vscpl1drv-template-macos-${{ matrix.arch }}.tar.gz
+          SHA256SUMS_PATTERNS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vscpl1drv-template-macos-${{ matrix.arch }}
+          path: |
+            vscpl1drv-template-macos-${{ matrix.arch }}.tar.gz
+            ${{ steps.sha256sums.outputs.file }}
+          if-no-files-found: error

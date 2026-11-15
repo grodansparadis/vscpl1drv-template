@@ -1,0 +1,30 @@
+; vscpl1drv-template.def
+;
+; Exported functions of the Windows DLL. The names are exported without
+; __stdcall decoration so hosts find them with GetProcAddress("CanalOpen").
+
+LIBRARY "vscpl1drv-template"
+
+EXPORTS
+    CanalOpen
+    CanalClose
+    CanalGetLevel
+    CanalSend
+    CanalBlockingSend
+    CanalReceive
+    CanalBlockingReceive
+    CanalDataAvailable
+    CanalGetStatus
+    CanalGetStatistics
+    CanalSetFilter
+    CanalSetMask
+    CanalSetBaudrate
+    CanalGetVersion
+    CanalGetDllVersion
+    CanalGetVendorString
+    CanalGetDriverInfo
+    ; Optional CAN FD extension
+    CanalSendFD
+    CanalBlockingSendFD
+    CanalReceiveFD
+    CanalBlockingReceiveFD

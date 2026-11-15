@@ -1,0 +1,57 @@
+name: Windows
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows ${{ matrix.arch }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # x86 checks the undecorated __stdcall exports of a 32-bit DLL
+          - arch: x64
+          - arch: x86
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A ${{ matrix.arch == 'x86' && 'Win32' || 'x64' }}
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Install
+        shell: pwsh
+        run: |
+          cmake --install build --config Release --prefix "${{ github.workspace }}/staging"
+          Get-ChildItem -Recurse "${{ github.workspace }}/staging" | Select-Object -ExpandProperty FullName
+          Compress-Archive -Path "${{ github.workspace }}/staging/*" -DestinationPath "${{ github.workspace }}/vscpl1drv-template-windows-${{ matrix.arch }}.zip"
+
+      - name: Write SHA256SUMS
+        id: sha256sums
+        continue-on-error: true
+        shell: bash
+        run: |
+          bash "${GITHUB_WORKSPACE//\\//}/.github/scripts/write-sha256sums.sh" "SHA256SUMS-vscpl1drv-template-windows-${{ matrix.arch }}" <<'SHA256SUMS_PATTERNS'
+          vscpl1drv-template-windows-${{ matrix.arch }}.zip
+          SHA256SUMS_PATTERNS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vscpl1drv-template-windows-${{ matrix.arch }}
+          path: |
+            vscpl1drv-template-windows-${{ matrix.arch }}.zip
+            ${{ steps.sha256sums.outputs.file }}
+          if-no-files-found: error

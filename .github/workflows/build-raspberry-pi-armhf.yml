@@ -1,0 +1,61 @@
+name: Raspberry Pi armhf
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-raspberry-pi-armhf-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  raspberry-pi-armhf:
+    name: Linux Raspberry Pi 32-bit (armhf)
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable cross-architecture emulation
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130
+        with:
+          platforms: arm
+
+      # Debian bookworm is the base of Raspberry Pi OS bookworm, so the driver
+      # runs with the Pi's own libraries.
+      # GitHub has no 32-bit ARM runners; the build runs under QEMU.
+      - name: Build, test and install
+        run: |
+          docker run --rm \
+            --platform linux/arm/v7 \
+            --volume "$GITHUB_WORKSPACE:/src" \
+            --workdir /src \
+            debian:bookworm \
+            bash -euc '
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                build-essential cmake git python3 pandoc ca-certificates
+              cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+              cmake --build build --parallel "$(nproc)"
+              ctest --test-dir build --output-on-failure
+              DESTDIR=/src/staging cmake --install build
+              tar -C /src/staging -czf /src/vscpl1drv-template-linux-armhf.tar.gz .
+            '
+
+      - name: Write SHA256SUMS
+        id: sha256sums
+        continue-on-error: true
+        shell: bash
+        run: |
+          bash "${GITHUB_WORKSPACE//\\//}/.github/scripts/write-sha256sums.sh" "SHA256SUMS-vscpl1drv-template-linux-armhf" <<'SHA256SUMS_PATTERNS'
+          vscpl1drv-template-linux-armhf.tar.gz
+          SHA256SUMS_PATTERNS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vscpl1drv-template-linux-armhf
+          path: |
+            vscpl1drv-template-linux-armhf.tar.gz
+            ${{ steps.sha256sums.outputs.file }}
+          if-no-files-found: error
