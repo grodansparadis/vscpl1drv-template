@@ -25,10 +25,10 @@
 
 #define DRIVER_VERSION_YEAR  26
 #define DRIVER_VERSION_MONTH 11
-#define DRIVER_VERSION_PATCH 2
+#define DRIVER_VERSION_PATCH 3
 
-#define DRIVER_VERSION_STR   "26.11.2"
-#define DRIVER_VERSION       0x1A0B0002UL
+#define DRIVER_VERSION_STR   "26.11.3"
+#define DRIVER_VERSION       0x1A0B0003UL
 
 #define DRIVER_VERSION_CODE(year, month, patch) (((unsigned long) (year) << 24) | ((unsigned long) (month) << 16) | (patch))
 
