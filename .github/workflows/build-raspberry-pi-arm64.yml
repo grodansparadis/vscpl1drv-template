@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Debian bookworm is the base of Raspberry Pi OS bookworm, so the driver
       # runs with the Pi's own libraries.
@@ -46,7 +46,7 @@ jobs:
           vscpl1drv-template-linux-arm64.tar.gz
           SHA256SUMS_PATTERNS
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: vscpl1drv-template-linux-arm64
           path: |
